@@ -1,0 +1,1037 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Calendario</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <link href='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.css' rel='stylesheet' />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+    <style>
+        #calendar { max-width: 900px; margin: 40px auto; }
+    </style>
+</head>
+<body>
+    <nav class="nav nav-tabs mb-4">
+        <a class="nav-link" href="{{ url_for('agregar_nota') }}">Agregar Nota</a>
+        <a class="nav-link" href="{{ url_for('mis_notas') }}">Mis Notas</a>
+        <a class="nav-link" href="{{ url_for('agregar_evento') }}">Agregar Evento</a>
+        <a class="nav-link active" href="{{ url_for('calendario') }}">Calendario</a>
+    </nav>
+    <div class="container">
+        <h2>Calendario de Eventos</h2>
+        <div id='calendar'></div>
+        <!-- Filtros para la tabla de eventos -->
+        <div class="card mb-3 mt-4">
+          <div class="card-body">
+            <form id="filtrosEventos" class="row g-3">
+              <div class="col-md-3">
+                <label for="filtroCategoria" class="form-label">Categoría</label>
+                <select id="filtroCategoria" class="form-select">
+                  <option value="">Todas</option>
+                </select>
+              </div>
+              <div class="col-md-3">
+                <label for="filtroFechaInicio" class="form-label">Fecha de inicio</label>
+                <input type="text" id="filtroFechaInicio" class="form-control" placeholder="dd/mm/yyyy">
+              </div>
+              <div class="col-md-3">
+                <label for="filtroRepeticion" class="form-label">Repetición</label>
+                <select id="filtroRepeticion" class="form-select">
+                  <option value="">Todas</option>
+                  <option value="ninguna">Ninguna</option>
+                  <option value="diario">Diario</option>
+                  <option value="diario_laboral">Diario (Lunes a Viernes)</option>
+                  <option value="semanal">Semanal</option>
+                  <option value="mensual">Mensual</option>
+                  <option value="anual">Anual</option>
+                  <option value="personalizado">Personalizado</option>
+                </select>
+              </div>
+              <div class="col-md-3">
+                <label for="filtroEstado" class="form-label">Estado</label>
+                <select id="filtroEstado" class="form-select">
+                  <option value="">Todos</option>
+                  <option value="pendiente" selected>Pendiente</option>
+                  <option value="cancelado">Cancelado</option>
+                  <option value="realizado">Realizado</option>
+                </select>
+              </div>
+            </form>
+          </div>
+        </div>
+        <!-- Tabla de eventos -->
+        <div class="table-responsive mb-4">
+          <table class="table table-bordered table-hover align-middle" id="tablaEventos">
+            <thead class="table-light">
+              <tr>
+                <th></th>
+                <th>Título</th>
+                <th>Descripción</th>
+                <th>Categoría</th>
+                <th>Fecha de inicio</th>
+                <th>Fecha final</th>
+                <th>Repetición</th>
+                <th>Detalle de repetición</th>
+                <th>Estado</th>
+              </tr>
+            </thead>
+            <tbody>
+              <!-- Eventos se llenan por JS -->
+            </tbody>
+          </table>
+        </div>
+    </div>
+
+    <!-- Modal para crear/editar evento -->
+    <div class="modal fade" id="eventoModal" tabindex="-1" aria-labelledby="eventoModalLabel" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <form id="eventoForm">
+            <div class="modal-header">
+              <h5 class="modal-title" id="eventoModalLabel">Evento</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+            </div>
+            <div class="modal-body">
+              <input type="hidden" id="eventoId">
+              <div class="mb-3">
+                <label for="titulo" class="form-label">Título</label>
+                <input type="text" class="form-control" id="titulo" required>
+              </div>
+              <div class="mb-3">
+                <label for="descripcion" class="form-label">Descripción</label>
+                <textarea class="form-control" id="descripcion"></textarea>
+              </div>
+              <div class="mb-3 position-relative" style="max-width:400px;">
+                <label for="categoria" class="form-label">Categoría</label>
+                <div class="dropdown w-100">
+                  <input type="text" class="form-control dropdown-toggle" id="categoria" name="categoria" placeholder="Nueva o existente categoría" data-bs-toggle="dropdown" autocomplete="off">
+                  <ul class="dropdown-menu w-100" id="categoria_dropdown_modal" style="max-height:200px; overflow-y:auto;"></ul>
+                </div>
+              </div>
+              <div class="mb-3">
+                <label for="fecha_inicio" class="form-label">Fecha y hora de inicio</label>
+                <input type="text" class="form-control" id="fecha_inicio" required placeholder="dd/mm/yyyy, HH:MM">
+              </div>
+              <div class="mb-3">
+                <label for="fecha_final" class="form-label">Fecha y hora final</label>
+                <input type="text" class="form-control" id="fecha_final" required placeholder="dd/mm/yyyy, HH:MM">
+              </div>
+              <div class="mb-3">
+                <label for="repeticion" class="form-label">Repetición</label>
+                <select class="form-select" id="repeticion">
+                  <option value="ninguna">Ninguna</option>
+                  <option value="diario">Diario</option>
+                  <option value="diario_laboral">Diario (Lunes a Viernes)</option>
+                  <option value="semanal">Semanal</option>
+                  <option value="mensual">Mensual</option>
+                  <option value="anual">Anual</option>
+                  <option value="personalizado">Personalizado</option>
+                </select>
+              </div>
+              <div class="mb-3" id="personalizado_picker_modal" style="display:none;">
+                <label class="form-label">Intervalo personalizado</label>
+                <div class="d-flex align-items-center gap-2 mb-2">
+                    <select class="form-select" id="personalizado_tipo_modal" style="width:170px;">
+                        <option value="repite_n">Repite</option>
+                        <option value="repite_cada_n">Repite cada</option>
+                        <option value="el_n_dia_mes">El N día de cada mes</option>
+                    </select>
+                    <input type="number" min="1" max="99" class="form-control" id="personalizado_num_modal" style="width:80px;" value="1">
+                    <select class="form-select" id="personalizado_unit_modal" style="width:140px;">
+                        <option value="días">días</option>
+                        <option value="semanas">semanas</option>
+                        <option value="meses">meses</option>
+                        <option value="años">años</option>
+                    </select>
+                    <select class="form-select" id="personalizado_n_ordinal_modal" style="width:120px; display:none;">
+                        <option value="primer">primer</option>
+                        <option value="segundo">segundo</option>
+                        <option value="tercero">tercero</option>
+                        <option value="cuarto">cuarto</option>
+                        <option value="quinto">quinto</option>
+                        <option value="último">último</option>
+                    </select>
+                    <select class="form-select" id="personalizado_dia_semana_modal" style="width:120px; display:none;">
+                        <option value="lunes">lunes</option>
+                        <option value="martes">martes</option>
+                        <option value="miércoles">miércoles</option>
+                        <option value="jueves">jueves</option>
+                        <option value="viernes">viernes</option>
+                        <option value="sábado">sábado</option>
+                        <option value="domingo">domingo</option>
+                    </select>
+                </div>
+              </div>
+              <div class="mb-3">
+                <label for="repeticion_detalle" class="form-label">Detalle de repetición</label>
+                <input type="text" class="form-control" id="repeticion_detalle" readonly>
+              </div>
+              <div class="mb-3">
+                <label for="estado" class="form-label">Estado</label>
+                <select class="form-select" id="estado">
+                  <option value="pendiente">Pendiente</option>
+                  <option value="cancelado">Cancelado</option>
+                  <option value="realizado">Realizado</option>
+                </select>
+              </div>
+            </div>
+            <div class="modal-footer">
+              <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+              <button type="submit" class="btn btn-primary">Guardar</button>
+              <button type="button" class="btn btn-danger" id="eliminarEventoBtn" style="display:none;">Eliminar</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+
+    <!-- Modal para elegir mover ocurrencia o todas -->
+    <div class="modal fade" id="moverOcurrenciaModal" tabindex="-1" aria-labelledby="moverOcurrenciaModalLabel" aria-hidden="true">
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="moverOcurrenciaModalLabel">¿Qué deseas mover?</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Cerrar"></button>
+          </div>
+          <div class="modal-body">
+            <p>Este evento se repite. ¿Quieres mover solo esta ocurrencia o todas las ocurrencias?</p>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" id="btnMoverSoloOcurrencia">Solo esta ocurrencia</button>
+            <button type="button" class="btn btn-primary" id="btnMoverTodasOcurrencias">Todas las ocurrencias</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src='https://cdn.jsdelivr.net/npm/fullcalendar@6.1.11/index.global.min.js'></script>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script>
+      document.addEventListener('DOMContentLoaded', function() {
+        var calendarEl = document.getElementById('calendar');
+        var eventoModal = new bootstrap.Modal(document.getElementById('eventoModal'));
+        var calendar = new FullCalendar.Calendar(calendarEl, {
+          initialView: 'timeGridWeek',
+          locale: 'es',
+          headerToolbar: {
+            left: 'prev,next today',
+            center: 'title',
+            right: 'dayGridMonth,timeGridWeek,timeGridDay'
+          },
+          buttonText: {
+            today: 'hoy',
+            month: 'mes',
+            week: 'semana',
+            day: 'día'
+          },
+          events: '/api/eventos',
+          selectable: true,
+          editable: true,
+          eventContent: function(arg) {
+            var estado = arg.event.extendedProps.estado;
+            var checked = estado === 'realizado' ? 'checked' : '';
+            var checkboxId = 'chk_' + arg.event.id;
+            var colorStyle = arg.view.type === 'dayGridMonth' ? 'color:white;' : '';
+            var html = '';
+
+            if (arg.view.type === 'timeGridDay') {
+              // Get start and end time in HH:mm
+              var start = arg.event.start;
+              var end = arg.event.end;
+              var hourStr = '';
+              if (start) {
+                var startStr = start.getHours().toString().padStart(2, '0') + ':' + start.getMinutes().toString().padStart(2, '0');
+                var endStr = '';
+                if (end) {
+                  endStr = end.getHours().toString().padStart(2, '0') + ':' + end.getMinutes().toString().padStart(2, '0');
+                  hourStr = startStr + ' - ' + endStr;
+                } else {
+                  hourStr = startStr;
+                }
+              }
+              html = `<div style='display:flex;flex-direction:column;align-items:flex-start;gap:2px;${colorStyle}'>
+                <div style='display:flex;align-items:center;gap:4px;'>
+                  <input type='checkbox' class='calendar-event-checkbox' id='${checkboxId}' ${checked} style='margin:0;pointer-events:auto;' />
+                  <label for='${checkboxId}' style='margin:0;cursor:pointer;pointer-events:none;${colorStyle}'>${arg.event.title}</label>
+                </div>
+                <div style='font-size:0.95em;opacity:0.8;margin-left:24px;'>${hourStr}</div>
+              </div>`;
+            } else if (arg.view.type === 'timeGridWeek' || arg.view.type === 'dayGridMonth') {
+              html = `<div style='display:flex;align-items:center;gap:4px;${colorStyle}'>
+                <input type='checkbox' class='calendar-event-checkbox' id='${checkboxId}' ${checked} style='margin:0;pointer-events:auto;' />
+                <label for='${checkboxId}' style='margin:0;cursor:pointer;pointer-events:none;${colorStyle}'>${arg.event.title}</label>
+              </div>`;
+            } else {
+              return true;
+            }
+
+            setTimeout(function() {
+              var cb = document.getElementById(checkboxId);
+              if (cb) {
+                cb.onclick = function(ev) {
+                  ev.stopPropagation();
+                  var fcEvent = arg.event;
+                  var eventId = arg.event.id;
+                  var realId = String(eventId).split('_')[0];
+                  if (cb.checked) {
+                    // Cambia el color inmediatamente
+                    if (arg.el) {
+                      arg.el.style.setProperty('background-color', '#90ee90', 'important');
+                      arg.el.style.setProperty('border-color', '#90ee90', 'important');
+                      var main = arg.el.querySelector('.fc-event-main');
+                      if (main) main.style.setProperty('background-color', '#90ee90', 'important');
+                      if (arg.view.type === 'dayGridMonth') {
+                        arg.el.style.setProperty('color', 'white', 'important');
+                        if (main) main.style.setProperty('color', 'white', 'important');
+                      }
+                    }
+                    if (fcEvent) {
+                      fcEvent.setExtendedProp('estado', 'realizado');
+                      fcEvent.setProp('backgroundColor', '#90ee90');
+                      fcEvent.setProp('borderColor', '#90ee90');
+                    }
+                    // Actualiza la tabla inmediatamente
+                    var row = document.querySelector('tr[data-evento-id="' + realId + '"]');
+                    if (row) {
+                      row.style.setProperty('background-color', '#90ee90', 'important');
+                      var estadoCell = row.querySelector('.estado-cell');
+                      if (estadoCell) estadoCell.textContent = 'realizado';
+                      var cbTable = row.querySelector('input[type="checkbox"]');
+                      if (cbTable) cbTable.checked = true;
+                    }
+                    handleRealizado(arg.event.id, arg.event, cb, 'realizado', false);
+                    setTimeout(function() {
+                      window.calendar.refetchEvents();
+                      cargarEventosTabla();
+                    }, 300);
+                  } else {
+                    // Cambia el color inmediatamente
+                    if (fcEvent) {
+                      fcEvent.setExtendedProp('estado', 'pendiente');
+                      fcEvent.setProp('backgroundColor', '#007bff');
+                      fcEvent.setProp('borderColor', '#007bff');
+                    }
+                    if (arg.el) {
+                      arg.el.style.setProperty('background-color', '#007bff', 'important');
+                      arg.el.style.setProperty('border-color', '#007bff', 'important');
+                      var main = arg.el.querySelector('.fc-event-main');
+                      if (main) main.style.setProperty('background-color', '#007bff', 'important');
+                      if (arg.view.type === 'dayGridMonth') {
+                        arg.el.style.setProperty('color', 'white', 'important');
+                        if (main) main.style.setProperty('color', 'white', 'important');
+                      }
+                    }
+                    // Actualiza la tabla inmediatamente
+                    var row = document.querySelector('tr[data-evento-id="' + realId + '"]');
+                    if (row) {
+                      row.style.setProperty('background-color', '#007bff', 'important');
+                      var estadoCell = row.querySelector('.estado-cell');
+                      if (estadoCell) estadoCell.textContent = 'pendiente';
+                      var cbTable = row.querySelector('input[type="checkbox"]');
+                      if (cbTable) cbTable.checked = false;
+                    }
+                    handleRealizado(arg.event.id, arg.event, cb, 'pendiente', false);
+                    setTimeout(function() {
+                      window.calendar.refetchEvents();
+                      cargarEventosTabla();
+                    }, 300);
+                  }
+                };
+                // Set initial color and checked state
+                if (arg.el) {
+                  if (estado === 'realizado') {
+                    arg.el.style.setProperty('background-color', '#90ee90', 'important');
+                    arg.el.style.setProperty('border-color', '#90ee90', 'important');
+                    var main = arg.el.querySelector('.fc-event-main');
+                    if (main) main.style.setProperty('background-color', '#90ee90', 'important');
+                  } else if (estado === 'pendiente') {
+                    arg.el.style.setProperty('background-color', '#007bff', 'important');
+                    arg.el.style.setProperty('border-color', '#007bff', 'important');
+                    var main = arg.el.querySelector('.fc-event-main');
+                    if (main) main.style.setProperty('background-color', '#007bff', 'important');
+                  }
+                  // Force white text in month view
+                  if (arg.view.type === 'dayGridMonth') {
+                    arg.el.style.setProperty('color', 'white', 'important');
+                    var main = arg.el.querySelector('.fc-event-main');
+                    if (main) main.style.setProperty('color', 'white', 'important');
+                  }
+                }
+              }
+            }, 0);
+            return { html: html };
+          },
+          eventDidMount: function(info) {
+            if (info.event.extendedProps.estado === 'realizado') {
+              info.el.style.backgroundColor = '#90ee90';
+              info.el.style.borderColor = '#90ee90';
+              var main = info.el.querySelector('.fc-event-main');
+              if (main) main.style.backgroundColor = '#90ee90';
+            } else if (info.event.extendedProps.estado === 'pendiente') {
+              info.el.style.backgroundColor = '#007bff';
+              info.el.style.borderColor = '#007bff';
+              var main = info.el.querySelector('.fc-event-main');
+              if (main) main.style.backgroundColor = '#007bff';
+            } else if (info.event.extendedProps.estado === 'cancelado') {
+              info.el.style.setProperty('background-color', '#ffb3b3', 'important');
+              info.el.style.setProperty('border-color', '#ffb3b3', 'important');
+              var main = info.el.querySelector('.fc-event-main');
+              if (main) main.style.setProperty('background-color', '#ffb3b3', 'important');
+              info.el.classList.add('evento-cancelado');
+            }
+          },
+          select: function(info) {
+            limpiarModal();
+            document.getElementById('fecha_inicio').value = isoToDMYHM(info.startStr);
+            document.getElementById('fecha_final').value = info.endStr ? isoToDMYHM(info.endStr) : isoToDMYHM(info.startStr);
+            if (document.getElementById('repeticion').value === 'personalizado') {
+              pickerModal.style.display = '';
+              detalleModal.readOnly = true;
+              document.getElementById('repeticion_detalle').parentElement.style.display = '';
+              updateDetalleModal();
+            }
+            eventoModal.show();
+          },
+          eventClick: function(info) {
+            // Only prevent modal if the click is on the checkbox or its label
+            if (
+              info.jsEvent &&
+              info.jsEvent.target &&
+              (
+                info.jsEvent.target.classList.contains('calendar-event-checkbox') ||
+                (info.jsEvent.target.tagName === 'LABEL' && info.jsEvent.target.htmlFor && info.jsEvent.target.htmlFor.startsWith('chk_'))
+              )
+            ) {
+              return;
+            }
+            var e = info.event;
+            document.getElementById('eventoId').value = e.id;
+            document.getElementById('titulo').value = e.title;
+            document.getElementById('descripcion').value = e.extendedProps.descripcion || '';
+            document.getElementById('categoria').value = e.extendedProps.categoria || '';
+            document.getElementById('fecha_inicio').value = isoToDMYHM(e.startStr);
+            document.getElementById('fecha_final').value = e.endStr ? isoToDMYHM(e.endStr) : isoToDMYHM(e.startStr);
+            document.getElementById('repeticion').value = e.extendedProps.repeticion || 'ninguna';
+            document.getElementById('repeticion_detalle').value = e.extendedProps.repeticion_detalle || '';
+            document.getElementById('estado').value = e.extendedProps.estado || 'pendiente';
+            if (document.getElementById('repeticion').value === 'personalizado') {
+              pickerModal.style.display = '';
+              detalleModal.readOnly = true;
+              document.getElementById('repeticion_detalle').parentElement.style.display = '';
+              updateDetalleModal();
+            }
+            eventoModal.show();
+          },
+          eventDrop: function(info) {
+            cargarEventosTabla();
+            if (String(info.event.id).includes('_')) {
+              mostrarDialogoMoverOcurrencia(info.event, info.oldEvent ? info.oldEvent.startStr : info.oldStartStr, info.oldEvent ? info.oldEvent.endStr : info.oldEndStr);
+            } else {
+              handleMoveEvent(info.event, info.oldEvent ? info.oldEvent.startStr : info.oldStartStr, info.oldEvent ? info.oldEvent.endStr : info.oldEndStr);
+              cargarEventosTabla();
+            }
+          },
+          eventResize: function(info) {
+            cargarEventosTabla();
+            if (String(info.event.id).includes('_')) {
+              mostrarDialogoMoverOcurrencia(info.event, info.oldEvent ? info.oldEvent.startStr : info.oldStartStr, info.oldEvent ? info.oldEvent.endStr : info.oldEndStr);
+            } else {
+              handleMoveEvent(info.event, info.oldEvent ? info.oldEvent.startStr : info.oldStartStr, info.oldEvent ? info.oldEvent.endStr : info.oldEndStr);
+              cargarEventosTabla();
+            }
+          }
+        });
+        calendar.render();
+        window.calendar = calendar;
+
+        document.getElementById('eventoForm').onsubmit = function(e) {
+          e.preventDefault();
+          if (document.getElementById('repeticion').value === 'personalizado' && !document.getElementById('repeticion_detalle').value.trim()) {
+            alert('Debe completar el detalle de repetición para eventos personalizados.');
+            return false;
+          }
+          var id = document.getElementById('eventoId').value;
+          var realId = id.split('_')[0];
+          var data = {
+            title: document.getElementById('titulo').value,
+            descripcion: document.getElementById('descripcion').value,
+            categoria: document.getElementById('categoria').value,
+            start: dmyhmToISO(document.getElementById('fecha_inicio').value),
+            end: dmyhmToISO(document.getElementById('fecha_final').value),
+            repeticion: document.getElementById('repeticion').value,
+            repeticion_detalle: document.getElementById('repeticion_detalle').value,
+            estado: document.getElementById('estado').value
+          };
+          var savePromise;
+          if (id) {
+            savePromise = fetch('/api/eventos/' + realId, {
+              method: 'PUT',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(data)
+            });
+          } else {
+            savePromise = fetch('/api/eventos', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(data)
+            });
+          }
+          savePromise.then(async (response) => {
+            let eid = realId;
+            if (!id) {
+              // New event: get the new ID from the response
+              const data = await response.json();
+              eid = data.id;
+            }
+            // Update the estado for the current occurrence
+            const fecha_inicio = dmyhmToISO(document.getElementById('fecha_inicio').value);
+            const fecha_final = dmyhmToISO(document.getElementById('fecha_final').value);
+            const estado = document.getElementById('estado').value;
+            fetch('/api/ocurrencia', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                evento_id: eid,
+                fecha_inicio: fecha_inicio,
+                fecha_final: fecha_final,
+                estado: estado
+              })
+            }).then(() => {
+              calendar.refetchEvents();
+              eventoModal.hide();
+              cargarEventosTabla();
+            });
+          });
+        };
+
+        document.getElementById('eliminarEventoBtn').onclick = function() {
+          var id = document.getElementById('eventoId').value;
+          // Extract real DB id if it's a recurring event (e.g., '2_d_20250604' -> 2)
+          var realId = id.split('_')[0];
+          if (realId && confirm('¿Seguro que deseas eliminar este evento?')) {
+            fetch('/api/eventos/' + realId, {
+              method: 'DELETE'
+            }).then(() => {
+              calendar.refetchEvents();
+              eventoModal.hide();
+            });
+          }
+        };
+
+        function limpiarModal() {
+          document.getElementById('eventoId').value = '';
+          document.getElementById('titulo').value = '';
+          document.getElementById('descripcion').value = '';
+          document.getElementById('categoria').value = '';
+          document.getElementById('fecha_inicio').value = '';
+          document.getElementById('fecha_final').value = '';
+          document.getElementById('repeticion').value = 'ninguna';
+          document.getElementById('repeticion_detalle').value = '';
+          document.getElementById('estado').value = 'pendiente';
+          document.getElementById('eliminarEventoBtn').style.display = 'none';
+        }
+
+        // Mostrar botón eliminar solo si es edición
+        document.getElementById('eventoModal').addEventListener('show.bs.modal', function () {
+          var id = document.getElementById('eventoId').value;
+          document.getElementById('eliminarEventoBtn').style.display = id ? 'inline-block' : 'none';
+        });
+
+        function guardarEvento(event, soloMover) {
+          var data = {
+            title: event.title,
+            descripcion: event.extendedProps.descripcion || '',
+            categoria: event.extendedProps.categoria || '',
+            start: event.startStr.replace('T', ' ').slice(0, 16),
+            end: event.endStr ? event.endStr.replace('T', ' ').slice(0, 16) : event.startStr.replace('T', ' ').slice(0, 16),
+            repeticion: event.extendedProps.repeticion || 'ninguna',
+            repeticion_detalle: event.extendedProps.repeticion_detalle || '',
+            estado: event.extendedProps.estado || 'pendiente'
+          };
+          fetch('/api/eventos/' + event.id, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(data)
+          }).then(() => {
+            calendar.refetchEvents();
+            cargarEventosTabla();
+          });
+        }
+
+        // --- Categoria combobox for modal ---
+        // Fetch unique categories from /api/eventos and use for the dropdown
+        function setupCategoriaComboboxModal() {
+          var input = document.getElementById('categoria');
+          var dropdown = document.getElementById('categoria_dropdown_modal');
+          if (!input || !dropdown) return;
+          fetch('/api/eventos').then(r => r.json()).then(eventos => {
+            var cats = [...new Set(eventos.map(e => e.categoria).filter(Boolean))];
+            dropdown.innerHTML = '';
+            cats.forEach(function(cat) {
+              var li = document.createElement('li');
+              var a = document.createElement('a');
+              a.className = 'dropdown-item';
+              a.href = '#';
+              a.textContent = cat;
+              a.addEventListener('click', function(e) {
+                e.preventDefault();
+                input.value = cat;
+                dropdown.classList.remove('show');
+                input.setAttribute('aria-expanded', 'false');
+              });
+              li.appendChild(a);
+              dropdown.appendChild(li);
+            });
+          });
+          // Show dropdown on input focus or click
+          input.addEventListener('focus', function() {
+            input.setAttribute('aria-expanded', 'true');
+            dropdown.classList.add('show');
+          });
+          input.addEventListener('click', function() {
+            input.setAttribute('aria-expanded', 'true');
+            dropdown.classList.add('show');
+          });
+          // Hide dropdown when clicking outside
+          document.addEventListener('click', function(e) {
+            if (!input.contains(e.target) && !dropdown.contains(e.target)) {
+              dropdown.classList.remove('show');
+              input.setAttribute('aria-expanded', 'false');
+            }
+          });
+          // Filter items as user types
+          input.addEventListener('input', function() {
+            var val = this.value.toLowerCase();
+            var items = dropdown.querySelectorAll('.dropdown-item');
+            let anyVisible = false;
+            items.forEach(function(item) {
+              if (!val || item.textContent.toLowerCase().includes(val)) {
+                item.style.display = '';
+                anyVisible = true;
+              } else {
+                item.style.display = 'none';
+              }
+            });
+            if (val && anyVisible) {
+              dropdown.classList.add('show');
+              input.setAttribute('aria-expanded', 'true');
+            } else if (!val) {
+              dropdown.classList.add('show');
+              input.setAttribute('aria-expanded', 'true');
+            } else {
+              dropdown.classList.remove('show');
+              input.setAttribute('aria-expanded', 'false');
+            }
+          });
+        }
+        // Setup when modal is shown
+        var eventoModalEl = document.getElementById('eventoModal');
+        if (eventoModalEl) {
+          eventoModalEl.addEventListener('shown.bs.modal', setupCategoriaComboboxModal);
+        }
+
+        // --- Tabla de eventos y filtros ---
+        const tablaEventos = document.getElementById('tablaEventos').getElementsByTagName('tbody')[0];
+        const filtroCategoria = document.getElementById('filtroCategoria');
+        const filtroFechaInicio = document.getElementById('filtroFechaInicio');
+        const filtroRepeticion = document.getElementById('filtroRepeticion');
+        const filtroEstado = document.getElementById('filtroEstado');
+        let eventosOriginales = [];
+
+        function cargarEventosTabla() {
+          fetch('/api/eventos').then(r => r.json()).then(eventos => {
+            eventosOriginales = eventos.map(e => ({
+              ...e,
+              start: isoToDMYHM(e.start),
+              end: isoToDMYHM(e.end)
+            }));
+            poblarFiltros(eventosOriginales);
+            mostrarEventosFiltrados();
+          });
+        }
+
+        function poblarFiltros(eventos) {
+          // Categoría
+          const categorias = [...new Set(eventos.map(e => e.categoria).filter(Boolean))];
+          filtroCategoria.innerHTML = '<option value="">Todas</option>' + categorias.map(cat => `<option value="${cat}">${cat}</option>`).join('');
+        }
+
+        function formatDateDMY(dateStr) {
+          if (!dateStr) return '';
+          // Accepts dd/mm/yyyy, HH:MM or dd/mm/yyyy
+          const match = dateStr.match(/(\d{2})\/(\d{2})\/(\d{4})(?:,\s?(\d{2}):(\d{2}))?/);
+          if (!match) return dateStr;
+          const [_, d, m, y, h, min] = match;
+          if (h && min) return `${d}/${m}/${y}, ${h}:${min}`;
+          return `${d}/${m}/${y}`;
+        }
+
+        function mostrarEventosFiltrados() {
+          const cat = filtroCategoria.value;
+          const fecha = filtroFechaInicio.value;
+          const rep = filtroRepeticion.value;
+          const est = filtroEstado.value;
+          let filtrados = eventosOriginales.filter(e => {
+            let ok = true;
+            if (cat && e.categoria !== cat) ok = false;
+            if (fecha && (!e.start || !e.start.startsWith(fecha))) ok = false;
+            if (rep && e.repeticion !== rep) ok = false;
+            if (est && e.estado !== est) ok = false;
+            return ok;
+          });
+          // Sort by start date ascending (oldest first)
+          filtrados.sort((a, b) => {
+            // Convert dd/mm/yyyy, HH:MM to Date for comparison
+            function parseDMYHM(s) {
+              const match = s.match(/(\d{2})\/(\d{2})\/(\d{4}),\s?(\d{2}):(\d{2})/);
+              if (!match) return new Date(0);
+              const [_, d, m, y, h, i] = match;
+              return new Date(`${y}-${m}-${d}T${h}:${i}`);
+            }
+            return parseDMYHM(a.start) - parseDMYHM(b.start);
+          });
+          tablaEventos.innerHTML = filtrados.map(e => `
+            <tr data-evento-id="${e.id}">
+              <td><input type="checkbox" class="chk-table-evento" id="chk_table_${e.id}" ${e.estado === 'realizado' ? 'checked' : ''}></td>
+              <td>${e.title || ''}</td>
+              <td>${e.descripcion || ''}</td>
+              <td>${e.categoria || ''}</td>
+              <td>${formatDateDMY(e.start)}</td>
+              <td>${formatDateDMY(e.end)}</td>
+              <td>${e.repeticion || ''}</td>
+              <td>${e.repeticion_detalle || ''}</td>
+              <td class="estado-cell">${e.estado || ''}</td>
+            </tr>
+          `).join('');
+
+          filtrados.forEach(e => {
+            var cb = document.getElementById('chk_table_' + e.id);
+            if (cb) {
+              cb.onchange = function(ev) {
+                ev.stopPropagation();
+                var row = cb.closest('tr');
+                var estadoCell = row ? row.querySelector('.estado-cell') : null;
+                var realId = String(e.id).split('_')[0];
+                var fcEvent = window.calendar ? window.calendar.getEventById(realId) : null;
+                if (cb.checked) {
+                  if (row) row.style.setProperty('background-color', '#90ee90', 'important');
+                  if (estadoCell) estadoCell.textContent = 'realizado';
+                  handleRealizado(e.id, null, cb, 'realizado', false);
+                  // --- Sync calendar ---
+                  if (fcEvent) {
+                    fcEvent.setExtendedProp('estado', 'realizado');
+                    fcEvent.setProp('backgroundColor', '#90ee90');
+                    fcEvent.setProp('borderColor', '#90ee90');
+                  }
+                  window.calendar.refetchEvents();
+                  cargarEventosTabla();
+                } else {
+                  if (row) row.style.setProperty('background-color', '#007bff', 'important');
+                  if (estadoCell) estadoCell.textContent = 'pendiente';
+                  handleRealizado(e.id, null, cb, 'pendiente', false);
+                  // --- Sync calendar ---
+                  if (fcEvent) {
+                    fcEvent.setExtendedProp('estado', 'pendiente');
+                    fcEvent.setProp('backgroundColor', '#007bff');
+                    fcEvent.setProp('borderColor', '#007bff');
+                  }
+                  window.calendar.refetchEvents();
+                  cargarEventosTabla();
+                }
+              };
+              // Set initial color and estado
+              var row = cb.closest('tr');
+              var estadoCell = row ? row.querySelector('.estado-cell') : null;
+              if (row) row.style.backgroundColor = (e.estado === 'realizado') ? '#90ee90' : (e.estado === 'pendiente' ? '#007bff' : '');
+              if (estadoCell) estadoCell.textContent = e.estado;
+            }
+          });
+        }
+
+        filtroCategoria.addEventListener('change', mostrarEventosFiltrados);
+        filtroFechaInicio.addEventListener('change', mostrarEventosFiltrados);
+        filtroRepeticion.addEventListener('change', mostrarEventosFiltrados);
+        filtroEstado.addEventListener('change', mostrarEventosFiltrados);
+
+        flatpickr("#filtroFechaInicio", {
+          dateFormat: "d/m/Y",
+          allowInput: true
+        });
+        flatpickr("#fecha_inicio", {
+          enableTime: true,
+          dateFormat: "d/m/Y H:i",
+          time_24hr: true,
+          allowInput: true
+        });
+        flatpickr("#fecha_final", {
+          enableTime: true,
+          dateFormat: "d/m/Y H:i",
+          time_24hr: true,
+          allowInput: true
+        });
+
+        // Helper: Convert ISO to dd/mm/yyyy, HH:MM
+        function isoToDMYHM(iso) {
+          if (!iso) return '';
+          const d = new Date(iso);
+          if (isNaN(d)) return iso;
+          const day = String(d.getDate()).padStart(2, '0');
+          const month = String(d.getMonth() + 1).padStart(2, '0');
+          const year = d.getFullYear();
+          const hour = String(d.getHours()).padStart(2, '0');
+          const min = String(d.getMinutes()).padStart(2, '0');
+          return `${day}/${month}/${year}, ${hour}:${min}`;
+        }
+        // Helper: Convert dd/mm/yyyy, HH:MM to ISO
+        function dmyhmToISO(s) {
+          const match = s.match(/(\d{2})\/(\d{2})\/(\d{4}),\s?(\d{2}):(\d{2})/);
+          if (!match) return s;
+          const [_, d, m, y, h, i] = match;
+          return `${y}-${m}-${d}T${h}:${i}`;
+        }
+
+        // Add helper for formatting fecha_inicio/fecha_final for ocurrencia
+        function toOcurrenciaKey(dt) {
+          if (!dt) return '';
+          if (typeof dt === 'string') {
+            // If already in correct format
+            if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/.test(dt)) return dt;
+            // If ISO with seconds
+            if (/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/.test(dt)) return dt.slice(0, 16);
+            // Try to parse as Date
+            let d = new Date(dt);
+            if (!isNaN(d)) dt = d;
+            else return dt.slice(0, 16); // fallback
+          }
+          if (dt instanceof Date) {
+            const y = dt.getFullYear();
+            const m = String(dt.getMonth() + 1).padStart(2, '0');
+            const d = String(dt.getDate()).padStart(2, '0');
+            const h = String(dt.getHours()).padStart(2, '0');
+            const min = String(dt.getMinutes()).padStart(2, '0');
+            return `${y}-${m}-${d}T${h}:${min}`;
+          }
+          return dt;
+        }
+
+        // --- Realizado handler for both calendar and table ---
+        function handleRealizado(eventId, calendarEvent, checkbox, estadoNuevo, reloadTable = true) {
+          var e = eventosOriginales.find(ev => String(ev.id) === String(eventId));
+          var fecha_inicio, fecha_final;
+          if (calendarEvent) {
+            fecha_inicio = toOcurrenciaKey(calendarEvent.startStr);
+            fecha_final = calendarEvent.endStr ? toOcurrenciaKey(calendarEvent.endStr) : toOcurrenciaKey(calendarEvent.startStr);
+          } else if (e) {
+            // e.start is in dd/mm/yyyy, HH:MM, so convert to ISO then to ocurrencia key
+            fecha_inicio = e.start ? toOcurrenciaKey(dmyhmToISO(e.start)) : '';
+            fecha_final = e.end ? toOcurrenciaKey(dmyhmToISO(e.end)) : '';
+          } else {
+            return;
+          }
+          var realId = String(eventId).split('_')[0];
+          // Debug: print what is being sent
+          console.log('handleRealizado', {eventId, realId, fecha_inicio, estado: estadoNuevo || 'realizado'});
+          fetch('/api/ocurrencia', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              evento_id: realId,
+              fecha_inicio: fecha_inicio,
+              fecha_final: fecha_final,
+              estado: estadoNuevo || 'realizado'
+            })
+          }).then(() => {
+            if (reloadTable) {
+              if (window.calendar) window.calendar.refetchEvents();
+              cargarEventosTabla();
+            }
+            // If reloadTable is false (table checkbox), do nothing else: UI is already updated
+          });
+        }
+
+        // Nueva función para mover solo la ocurrencia
+        function handleMoveEvent(event, oldStart, oldEnd) {
+          if (String(event.id).includes('_')) {
+            var realId = String(event.id).split('_')[0];
+            var prevStart = oldStart || event.extendedProps.start || event.startStr;
+            var prevEnd = oldEnd || event.extendedProps.end || (event.endStr ? event.endStr : event.startStr);
+            fetch('/api/ocurrencia', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                evento_id: realId,
+                fecha_inicio: toOcurrenciaKey(prevStart),
+                fecha_final: toOcurrenciaKey(prevEnd),
+                estado: 'omitido'
+              })
+            }).then(resp => {
+              if (!resp.ok) { alert('Error al marcar la ocurrencia original como omitida'); return; }
+              fetch('/api/ocurrencia', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  evento_id: realId,
+                  fecha_inicio: toOcurrenciaKey(event.startStr),
+                  fecha_final: event.endStr ? toOcurrenciaKey(event.endStr) : toOcurrenciaKey(event.startStr),
+                  estado: event.extendedProps.estado || 'pendiente'
+                })
+              }).then(resp2 => {
+                if (!resp2.ok) { alert('Error al crear la nueva ocurrencia'); return; }
+                if (window.calendar) window.calendar.refetchEvents();
+                cargarEventosTabla();
+              }).catch(e => { alert('Error al crear la nueva ocurrencia: ' + e); });
+            }).catch(e => { alert('Error al marcar la ocurrencia original: ' + e); });
+          } else {
+            guardarEvento(event, true);
+          }
+        }
+
+        cargarEventosTabla();
+
+        var repeticionModal = document.getElementById('repeticion');
+        var pickerModal = document.getElementById('personalizado_picker_modal');
+        var numModal = document.getElementById('personalizado_num_modal');
+        var unitModal = document.getElementById('personalizado_unit_modal');
+        var detalleModal = document.getElementById('repeticion_detalle');
+        var nOrdinalModal = document.getElementById('personalizado_n_ordinal_modal');
+        var diaSemanaModal = document.getElementById('personalizado_dia_semana_modal');
+        var tipoModal = document.getElementById('personalizado_tipo_modal');
+        function updateDetalleModal() {
+          if (pickerModal.style.display !== 'none') {
+            if (tipoModal.value === 'repite_n') {
+              detalleModal.value = `Repite ${numModal.value} ${unitModal.value}`;
+              nOrdinalModal.style.display = 'none';
+              diaSemanaModal.style.display = 'none';
+              numModal.style.display = '';
+              unitModal.style.display = '';
+            } else if (tipoModal.value === 'repite_cada_n') {
+              detalleModal.value = `Repite cada ${numModal.value} ${unitModal.value}`;
+              nOrdinalModal.style.display = 'none';
+              diaSemanaModal.style.display = 'none';
+              numModal.style.display = '';
+              unitModal.style.display = '';
+            } else if (tipoModal.value === 'el_n_dia_mes') {
+              const nText = nOrdinalModal.options[nOrdinalModal.selectedIndex].text;
+              const dText = diaSemanaModal.options[diaSemanaModal.selectedIndex].text;
+              detalleModal.value = `El ${nText} ${dText} de cada mes`;
+              nOrdinalModal.style.display = '';
+              diaSemanaModal.style.display = '';
+              numModal.style.display = 'none';
+              unitModal.style.display = 'none';
+            }
+          }
+        }
+        repeticionModal.addEventListener('change', function() {
+          if (this.value === 'personalizado') {
+            pickerModal.style.display = '';
+            detalleModal.readOnly = true;
+            document.getElementById('repeticion_detalle').parentElement.style.display = '';
+            detalleModal.required = true;
+            updateDetalleModal();
+          } else {
+            pickerModal.style.display = 'none';
+            detalleModal.readOnly = false;
+            document.getElementById('repeticion_detalle').parentElement.style.display = 'none';
+            detalleModal.value = '';
+            detalleModal.required = false;
+          }
+        });
+        tipoModal.addEventListener('change', updateDetalleModal);
+        nOrdinalModal.addEventListener('change', updateDetalleModal);
+        diaSemanaModal.addEventListener('change', updateDetalleModal);
+        numModal.addEventListener('input', updateDetalleModal);
+        unitModal.addEventListener('change', updateDetalleModal);
+        // On page load, set required accordingly
+        if (repeticionModal.value === 'personalizado') {
+          pickerModal.style.display = '';
+          detalleModal.readOnly = true;
+          document.getElementById('repeticion_detalle').parentElement.style.display = '';
+          detalleModal.required = true;
+          updateDetalleModal();
+        } else {
+          pickerModal.style.display = 'none';
+          detalleModal.readOnly = false;
+          document.getElementById('repeticion_detalle').parentElement.style.display = 'none';
+          detalleModal.value = '';
+          detalleModal.required = false;
+        }
+
+        // --- Modal para mover ocurrencia o todas ---
+        var moverOcurrenciaModal = new bootstrap.Modal(document.getElementById('moverOcurrenciaModal'));
+        var moverOpcion = { event: null, oldStart: null, oldEnd: null };
+        var moverModalButtonClicked = false;
+        function mostrarDialogoMoverOcurrencia(event, oldStart, oldEnd) {
+          moverOpcion.event = event;
+          moverOpcion.oldStart = oldStart;
+          moverOpcion.oldEnd = oldEnd;
+          moverModalButtonClicked = false;
+          moverOcurrenciaModal.show();
+        }
+        document.getElementById('btnMoverSoloOcurrencia').onclick = function() {
+          moverModalButtonClicked = true;
+          moverOcurrenciaModal.hide();
+          handleMoveEvent(moverOpcion.event, moverOpcion.oldStart, moverOpcion.oldEnd);
+          cargarEventosTabla();
+        };
+        document.getElementById('btnMoverTodasOcurrencias').onclick = function() {
+          moverModalButtonClicked = true;
+          moverOcurrenciaModal.hide();
+          var event = moverOpcion.event;
+          var realId = String(event.id).split('_')[0];
+          // 1. Actualiza el evento base
+          fetch('/api/eventos/' + realId, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              title: event.title,
+              descripcion: event.extendedProps.descripcion || '',
+              categoria: event.extendedProps.categoria || '',
+              start: event.startStr.replace('T', ' ').slice(0, 16),
+              end: event.endStr ? event.endStr.replace('T', ' ').slice(0, 16) : event.startStr.replace('T', ' ').slice(0, 16),
+              repeticion: event.extendedProps.repeticion || 'ninguna',
+              repeticion_detalle: event.extendedProps.repeticion_detalle || '',
+              estado: event.extendedProps.estado || 'pendiente'
+            })
+          }).then(() => {
+            // 2. Marca la ocurrencia original como omitida
+            fetch('/api/ocurrencia', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                evento_id: realId,
+                fecha_inicio: moverOpcion.oldStart,
+                fecha_final: moverOpcion.oldEnd,
+                estado: 'omitido'
+              })
+            }).then(() => {
+              // 3. Crea la nueva ocurrencia en la nueva fecha
+              fetch('/api/ocurrencia', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  evento_id: realId,
+                  fecha_inicio: event.startStr,
+                  fecha_final: event.endStr ? event.endStr : event.startStr,
+                  estado: event.extendedProps.estado || 'pendiente'
+                })
+              }).then(() => {
+                if (window.calendar) window.calendar.refetchEvents();
+                cargarEventosTabla();
+              });
+            });
+          });
+        };
+        document.getElementById('moverOcurrenciaModal').addEventListener('hidden.bs.modal', function () {
+          if (!moverModalButtonClicked && moverOpcion.event) {
+            // Assume 'Solo esta ocurrencia'
+            handleMoveEvent(moverOpcion.event, moverOpcion.oldStart, moverOpcion.oldEnd);
+            cargarEventosTabla();
+          }
+        });
+
+        filtroEstado.value = "pendiente";
+      });
+    </script>
+</body>
+</html> 

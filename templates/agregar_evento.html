@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Agregar Evento</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+</head>
+<body>
+    <nav class="nav nav-tabs mb-4">
+        <a class="nav-link" href="{{ url_for('agregar_nota') }}">Agregar Nota</a>
+        <a class="nav-link" href="{{ url_for('mis_notas') }}">Mis Notas</a>
+        <a class="nav-link active" href="{{ url_for('agregar_evento') }}">Agregar Evento</a>
+        <a class="nav-link" href="{{ url_for('calendario') }}">Calendario</a>
+    </nav>
+    <div class="container">
+        <h2>Agregar Evento</h2>
+        <form method="post">
+            <div class="mb-3">
+                <label for="titulo" class="form-label">Título</label>
+                <input type="text" class="form-control" id="titulo" name="titulo" required>
+            </div>
+            <div class="mb-3">
+                <label for="descripcion" class="form-label">Descripción</label>
+                <textarea class="form-control" id="descripcion" name="descripcion" rows="3"></textarea>
+            </div>
+            <div class="mb-3 position-relative" style="max-width:400px;">
+                <label for="categoria" class="form-label">Categoría</label>
+                <div class="dropdown w-100">
+                    <input type="text" class="form-control dropdown-toggle" id="categoria_input" name="categoria" placeholder="Nueva o existente categoría" data-bs-toggle="dropdown" autocomplete="off" required aria-expanded="false">
+                    <ul class="dropdown-menu w-100" id="categoria_dropdown" style="max-height:200px; overflow-y:auto;">
+                        {% for categoria in categorias %}
+                        <li><a class="dropdown-item" href="#">{{ categoria }}</a></li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+            <div class="mb-3">
+                <label for="fecha_inicio" class="form-label">Fecha y hora de inicio</label>
+                <input type="text" class="form-control" id="fecha_inicio" name="fecha_inicio" required>
+            </div>
+            <div class="mb-3">
+                <label for="fecha_final" class="form-label">Fecha y hora final</label>
+                <input type="text" class="form-control" id="fecha_final" name="fecha_final" required>
+            </div>
+            <div class="mb-3">
+                <label for="repeticion" class="form-label">Repetición</label>
+                <select class="form-select" id="repeticion" name="repeticion" required>
+                    <option value="ninguna">Ninguna</option>
+                    <option value="diario">Diario</option>
+                    <option value="diario_laboral">Diario (Lunes a Viernes)</option>
+                    <option value="semanal">Semanal</option>
+                    <option value="mensual">Mensual</option>
+                    <option value="anual">Anual</option>
+                    <option value="personalizado">Personalizado</option>
+                </select>
+            </div>
+            <div class="mb-3" id="personalizado_picker" style="display:none;">
+                <label class="form-label">Intervalo personalizado</label>
+                <div class="d-flex align-items-center gap-2 mb-2">
+                    <select class="form-select" id="personalizado_tipo" style="width:170px;">
+                        <option value="repite_n">Repite</option>
+                        <option value="repite_cada_n">Repite cada</option>
+                        <option value="el_n_dia_mes">El N día de cada mes</option>
+                    </select>
+                    <input type="number" min="1" max="99" class="form-control" id="personalizado_num" style="width:80px;" value="1">
+                    <select class="form-select" id="personalizado_unit" style="width:140px;">
+                        <option value="días">días</option>
+                        <option value="semanas">semanas</option>
+                        <option value="meses">meses</option>
+                        <option value="años">años</option>
+                    </select>
+                    <select class="form-select" id="personalizado_n_ordinal" style="width:120px; display:none;">
+                        <option value="primer">primer</option>
+                        <option value="segundo">segundo</option>
+                        <option value="tercero">tercero</option>
+                        <option value="cuarto">cuarto</option>
+                        <option value="quinto">quinto</option>
+                        <option value="último">último</option>
+                    </select>
+                    <select class="form-select" id="personalizado_dia_semana" style="width:120px; display:none;">
+                        <option value="lunes">lunes</option>
+                        <option value="martes">martes</option>
+                        <option value="miércoles">miércoles</option>
+                        <option value="jueves">jueves</option>
+                        <option value="viernes">viernes</option>
+                        <option value="sábado">sábado</option>
+                        <option value="domingo">domingo</option>
+                    </select>
+                </div>
+            </div>
+            <div class="mb-3" id="repeticion_detalle_group" style="display:none;">
+                <label for="repeticion_detalle" class="form-label">Detalle de repetición</label>
+                <input type="text" class="form-control" id="repeticion_detalle" name="repeticion_detalle" placeholder="Ej: cada 3 semanas, segundo martes de cada mes" readonly required>
+            </div>
+            <div class="mb-3">
+                <label for="estado" class="form-label">Estado</label>
+                <select class="form-select" id="estado" name="estado" required>
+                    <option value="pendiente">Pendiente</option>
+                    <option value="cancelado">Cancelado</option>
+                    <option value="realizado">Realizado</option>
+                </select>
+            </div>
+            <button type="submit" class="btn btn-primary">Agregar Evento</button>
+        </form>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function() {
+            const input = document.getElementById('categoria_input');
+            const dropdown = document.getElementById('categoria_dropdown');
+            const items = Array.from(dropdown.getElementsByClassName('dropdown-item'));
+            // Show dropdown on input focus or click
+            input.addEventListener('focus', function() {
+                input.setAttribute('aria-expanded', 'true');
+                dropdown.classList.add('show');
+            });
+            input.addEventListener('click', function() {
+                input.setAttribute('aria-expanded', 'true');
+                dropdown.classList.add('show');
+            });
+            // Hide dropdown when clicking outside
+            document.addEventListener('click', function(e) {
+                if (!input.contains(e.target) && !dropdown.contains(e.target)) {
+                    dropdown.classList.remove('show');
+                    input.setAttribute('aria-expanded', 'false');
+                }
+            });
+            // Fill input when clicking an item
+            items.forEach(function(item) {
+                item.addEventListener('click', function(e) {
+                    e.preventDefault();
+                    input.value = this.textContent;
+                    dropdown.classList.remove('show');
+                    input.setAttribute('aria-expanded', 'false');
+                });
+            });
+            // Filter items as user types
+            input.addEventListener('input', function() {
+                const val = this.value.toLowerCase();
+                let anyVisible = false;
+                items.forEach(function(item) {
+                    if (!val || item.textContent.toLowerCase().includes(val)) {
+                        item.style.display = '';
+                        anyVisible = true;
+                    } else {
+                        item.style.display = 'none';
+                    }
+                });
+                // Show dropdown if there are matches
+                if (val && anyVisible) {
+                    dropdown.classList.add('show');
+                    input.setAttribute('aria-expanded', 'true');
+                } else if (!val) {
+                    dropdown.classList.add('show');
+                    input.setAttribute('aria-expanded', 'true');
+                } else {
+                    dropdown.classList.remove('show');
+                    input.setAttribute('aria-expanded', 'false');
+                }
+            });
+            flatpickr('#fecha_inicio', {
+                enableTime: true,
+                dateFormat: 'd/m/Y H:i',
+                time_24hr: true,
+                locale: 'es'
+            });
+            flatpickr('#fecha_final', {
+                enableTime: true,
+                dateFormat: 'd/m/Y H:i',
+                time_24hr: true,
+                locale: 'es'
+            });
+            // Validation for fecha_inicio <= fecha_final
+            document.querySelector('form').addEventListener('submit', function(e) {
+                const inicioInput = document.getElementById('fecha_inicio');
+                const finalInput = document.getElementById('fecha_final');
+                // Compare as dd/mm/yyyy, HH:MM
+                const parseDMYHM = s => {
+                    const match = s.match(/(\d{2})\/(\d{2})\/(\d{4}),\s?(\d{2}):(\d{2})/);
+                    if (!match) return null;
+                    const [_, d, m, y, h, i] = match;
+                    return new Date(`${y}-${m}-${d}T${h}:${i}`);
+                };
+                const dateInicio = parseDMYHM(inicioInput.value);
+                const dateFinal = parseDMYHM(finalInput.value);
+                if (dateInicio && dateFinal && dateInicio > dateFinal) {
+                    e.preventDefault();
+                    alert('La fecha y hora de inicio no puede ser mayor que la fecha y hora final.');
+                    return false;
+                }
+                // Prevent submit if personalizado and detalle is empty
+                const repeticion = document.getElementById('repeticion');
+                const detalle = document.getElementById('repeticion_detalle');
+                if (repeticion.value === 'personalizado' && !detalle.value.trim()) {
+                    e.preventDefault();
+                    alert('Debe completar el detalle de repetición para eventos personalizados.');
+                    return false;
+                }
+            });
+            const repeticion = document.getElementById('repeticion');
+            const picker = document.getElementById('personalizado_picker');
+            const num = document.getElementById('personalizado_num');
+            const unit = document.getElementById('personalizado_unit');
+            const detalle = document.getElementById('repeticion_detalle');
+            const detalleGroup = document.getElementById('repeticion_detalle_group');
+            const tipo = document.getElementById('personalizado_tipo');
+            const nOrdinal = document.getElementById('personalizado_n_ordinal');
+            const diaSemana = document.getElementById('personalizado_dia_semana');
+            function updateDetalle() {
+                if (picker.style.display !== 'none') {
+                    if (tipo.value === 'repite_n') {
+                        detalle.value = `Repite ${num.value} ${unit.value}`;
+                        nOrdinal.style.display = 'none';
+                        diaSemana.style.display = 'none';
+                        num.style.display = '';
+                        unit.style.display = '';
+                    } else if (tipo.value === 'repite_cada_n') {
+                        detalle.value = `Repite cada ${num.value} ${unit.value}`;
+                        nOrdinal.style.display = 'none';
+                        diaSemana.style.display = 'none';
+                        num.style.display = '';
+                        unit.style.display = '';
+                    } else if (tipo.value === 'el_n_dia_mes') {
+                        const nText = nOrdinal.options[nOrdinal.selectedIndex].text;
+                        const dText = diaSemana.options[diaSemana.selectedIndex].text;
+                        detalle.value = `El ${nText} ${dText} de cada mes`;
+                        nOrdinal.style.display = '';
+                        diaSemana.style.display = '';
+                        num.style.display = 'none';
+                        unit.style.display = 'none';
+                    }
+                }
+            }
+            repeticion.addEventListener('change', function() {
+                if (this.value === 'personalizado') {
+                    picker.style.display = '';
+                    detalleGroup.style.display = '';
+                    detalle.readOnly = true;
+                    detalle.required = true;
+                    updateDetalle();
+                } else {
+                    picker.style.display = 'none';
+                    detalleGroup.style.display = 'none';
+                    detalle.readOnly = false;
+                    detalle.required = false;
+                    detalle.value = '';
+                }
+            });
+            tipo.addEventListener('change', updateDetalle);
+            nOrdinal.addEventListener('change', updateDetalle);
+            diaSemana.addEventListener('change', updateDetalle);
+            num.addEventListener('input', updateDetalle);
+            unit.addEventListener('change', updateDetalle);
+            // On page load, set visibility based on current value
+            if (repeticion.value === 'personalizado') {
+                picker.style.display = '';
+                detalleGroup.style.display = '';
+                detalle.readOnly = true;
+                detalle.required = true;
+                updateDetalle();
+            } else {
+                picker.style.display = 'none';
+                detalleGroup.style.display = 'none';
+                detalle.readOnly = false;
+                detalle.required = false;
+                detalle.value = '';
+            }
+        });
+    </script>
+</body>
+</html> 
