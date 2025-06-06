@@ -1,3 +1,5 @@
+![CodeRabbit Pull Request Reviews](https://img.shields.io/coderabbit/prs/github/mauricio222/Calendario-y-Notas?utm_source=oss&utm_medium=github&utm_campaign=mauricio222%2FCalendario-y-Notas&labelColor=171717&color=FF570A&link=https%3A%2F%2Fcoderabbit.ai&label=CodeRabbit+Reviews)
+
 # Calendario y Notas
 
 A simple web application to manage your calendar events and notes.
